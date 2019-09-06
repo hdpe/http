@@ -105,7 +105,22 @@ func Listen(httpBindAddr string, Asset func(string) ([]byte, error), exitCh chan
 	//compress := handlers.CompressHandler(pat)
 	auth := BasicAuthHandler(pat) //compress)
 
-	err := http.ListenAndServe(httpBindAddr, auth)
+	f := func(w http.ResponseWriter, req *http.Request) {
+
+		if req.RequestURI == "/robots.txt" {
+			w.Header().Set("Content-Type", "text/plain")
+			if _, err := w.Write(bytes.NewBufferString("User-agent: *\nDisallow: /").Bytes()); err != nil {
+				panic(err)
+			}
+
+		} else {
+			auth.ServeHTTP(w, req)
+		}
+	}
+
+	handler := http.HandlerFunc(f)
+	
+	err := http.ListenAndServe(httpBindAddr, handler)
 	if err != nil {
 		log.Fatalf("[HTTP] Error binding to address %s: %s", httpBindAddr, err)
 	}
